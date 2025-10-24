@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>미니홈피 (Firebase 연동 예제)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic"; margin:0; padding:0; background:#fafafa; }
+    header { background:#2b2b2b; color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+    .brand { font-weight:700; }
+    .controls > * { margin-left:8px; }
+    nav { display:flex; gap:8px; padding:12px; background:#f3f3f3; }
+    nav button { padding:8px 12px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+    nav button.active { background:#2b2b2b; color:#fff; border-color:#2b2b2b; }
+    .container { padding:16px; max-width:1000px; margin:0 auto; }
+    .hidden { display:none; }
+    .card { border:1px solid #e3e3e3; padding:12px; border-radius:8px; margin-bottom:12px; background:#fff; }
+    .row { display:flex; gap:12px; align-items:center; }
+    .profile-img { width:64px; height:64px; border-radius:50%; object-fit:cover; background:#eee; }
+    input[type="text"], textarea { width:100%; padding:8px; border-radius:6px; border:1px solid #ddd; }
+    .small { font-size:13px; color:#666; }
+    .btn { padding:8px 12px; border-radius:6px; border:0; cursor:pointer; }
+    .btn-primary { background:#1976d2; color:#fff; }
+    .btn-ghost { background:transparent; border:1px solid #1976d2; color:#1976d2; }
+    .meta { color:#777; font-size:13px; }
+    .actions { display:flex; gap:8px; margin-top:8px; }
+    .search { margin-left:auto; display:flex; gap:8px; align-items:center;}
+    .friend-btn.pending { background:#ffc107; color:#000; }
+    aside.info { max-width:1000px; margin:12px auto; padding:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">내 미니홈피</div>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <div id="notif-area" class="small" style="color:#fff; margin-right:8px;">알림: <span id="notif-count">0</span></div>
+      <div class="controls">
+        <span id="user-area" class="small">로딩중...</span>
+        <button id="btn-login" class="btn btn-primary">로그인 (Google)</button>
+        <button id="btn-logout" class="btn" style="display:none">로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" data-tab="photos">사진첩</button>
+    <button class="tab-btn" data-tab="diary">다이어리</button>
+    <button class="tab-btn" data-tab="guestbook">방명록</button>
+    <button class="tab-btn" data-tab="friends">친구</button>
+
+    <div class="search">
+      <input id="search-input" type="text" placeholder="검색어 입력 (사진/다이어리)" />
+      <button id="search-btn" class="btn btn-ghost">검색</button>
+      <button id="clear-search" class="btn">초기화</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- 프로필 편집 / 표시 -->
+    <section id="profile-section" class="card">
+      <div class="row">
+        <img id="profile-pic" class="profile-img" src="" alt="프로필 이미지" />
+        <div style="flex:1">
+          <div style="display:flex; gap:12px; align-items:center">
+            <div>
+              <div id="display-name" style="font-weight:700">비로그인 사용자</div>
+              <div id="display-bio" class="small">자기소개가 없습니다.</div>
+            </div>
+            <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+              <button id="edit-profile-btn" class="btn">프로필 편집</button>
+              <button id="view-requests-btn" class="btn">요청 보기</button>
+              <button id="view-notifs-btn" class="btn">알림 보기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="profile-edit" class="hidden" style="margin-top:12px">
+        <input id="input-name" type="text" placeholder="닉네임" />
+        <textarea id="input-bio" rows="3" placeholder="프로필 소개"></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center">
+          <input id="profile-photo-input" type="file" accept="image/*" />
+          <button id="save-profile" class="btn btn-primary">저장</button>
+          <button id="cancel-profile" class="btn">취소</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 게시판 탭들 -->
+    <section id="photos" class="tab card">
+      <h3>사진첩</h3>
+      <div style="margin-bottom:12px">
+        <input id="photo-title" type="text" placeholder="사진 제목" />
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center">
+          <input id="photo-file" type="file" accept="image/*" />
+          <label><input id="photo-public" type="checkbox" /> 공개(비로그인 사용자도 보기)</label>
+          <button id="upload-photo" class="btn btn-primary">업로드</button>
+        </div>
+      </div>
+      <div id="photos-list"></div>
+    </section>
+
+    <section id="diary" class="tab card hidden">
+      <h3>다이어리</h3>
+      <div style="margin-bottom:12px">
+        <input id="post-title" type="text" placeholder="제목" />
+        <textarea id="post-content" rows="4" placeholder="내용"></textarea>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:8px">
+          <label><input id="post-public" type="checkbox" /> 공개</label>
+          <button id="create-post" class="btn btn-primary">작성</button>
+        </div>
+      </div>
+      <div id="posts-list"></div>
+    </section>
+
+    <section id="guestbook" class="tab card hidden">
+      <h3>방명록</h3>
+      <div style="margin-bottom:12px">
+        <textarea id="guest-content" rows="3" placeholder="방명록을 남겨보세요"></textarea>
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button id="guest-post" class="btn btn-primary">등록</button>
+        </div>
+      </div>
+      <div id="guest-list"></div>
+    </section>
+
+    <section id="friends" class="tab card hidden">
+      <h3>친구</h3>
+      <div style="display:flex; gap:12px; margin-bottom:12px; align-items:flex-start">
+        <div style="flex:1">
+          <h4>내 친구</h4>
+          <div id="friends-list"></div>
+        </div>
+        <div style="flex:1">
+          <h4>친구 요청</h4>
+          <div id="incoming-requests"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="info">
+    <div class="small">설정 & 권장사항:</div>
+    <ul class="small">
+      <li>Firestore/Storage 규칙을 배포해서 비공개 리소스 노출을 막으세요. (아래 포함된 규칙 예시 참조)</li>
+      <li>관리자 권한 할당은 Firebase Admin SDK(서버) 또는 Cloud Function을 사용해 custom claims로 처리하세요. 이 프로젝트는 `admins` 컬렉션을 참고해 클라이언트에서 간단한 권한을 구현합니다(운영환경에서는 custom claims 권장).</li>
+      <li>이미지 업로드 시 파일 메타데이터에 <code>public:true</code> 값을 추가해 공개 여부를 스토리지 규칙과 연동합니다.</li>
+    </ul>
+  </aside>
+
+  <!-- Firebase SDK 초기화 (사용자 제공 설정) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, doc, setDoc, getDoc, getDocs, onSnapshot, query, where, orderBy, updateDoc, arrayUnion, arrayRemove, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+
+    // --- Firebase 설정 (사용자가 제공한 값) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlR_ctIhpsykWYJi_W6iYIeM3lUpFe5Pk",
+      authDomain: "pr-2128d.firebaseapp.com",
+      projectId: "pr-2128d",
+      storageBucket: "pr-2128d.firebasestorage.app",
+      messagingSenderId: "915082414403",
+      appId: "1:915082414403:web:1dbb554c05288b09a387f6"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // DOM 요소 캐시
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tabSections = document.querySelectorAll('.tab');
+    const userArea = document.getElementById('user-area');
+    const btnLogin = document.getElementById('btn-login');
+    const btnLogout = document.getElementById('btn-logout');
+
+    // profile
+    const profilePic = document.getElementById('profile-pic');
+    const displayNameElem = document.getElementById('display-name');
+    const displayBioElem = document.getElementById('display-bio');
+    const editProfileBtn = document.getElementById('edit-profile-btn');
+    const profileEdit = document.getElementById('profile-edit');
+    const inputName = document.getElementById('input-name');
+    const inputBio = document.getElementById('input-bio');
+    const profilePhotoInput = document.getElementById('profile-photo-input');
+    const saveProfileBtn = document.getElementById('save-profile');
+    const cancelProfileBtn = document.getElementById('cancel-profile');
+    const viewRequestsBtn = document.getElementById('view-requests-btn');
+    const viewNotifsBtn = document.getElementById('view-notifs-btn');
+
+    // photos
+    const photoFileInput = document.getElementById('photo-file');
+    const photoTitleInput = document.getElementById('photo-title');
+    const uploadPhotoBtn = document.getElementById('upload-photo');
+    const photoPublicCheckbox = document.getElementById('photo-public');
+    const photosList = document.getElementById('photos-list');
+
+    // diary
+    const postTitle = document.getElementById('post-title');
+    const postContent = document.getElementById('post-content');
+    const createPostBtn = document.getElementById('create-post');
+    const postPublicCheckbox = document.getElementById('post-public');
+    const postsList = document.getElementById('posts-list');
+
+    // guestbook
+    const guestContent = document.getElementById('guest-content');
+    const guestPostBtn = document.getElementById('guest-post');
+    const guestList = document.getElementById('guest-list');
+
+    // friends/requests
+    const friendsList = document.getElementById('friends-list');
+    const incomingRequests = document.getElementById('incoming-requests');
+
+    // notifications
+    const notifCount = document.getElementById('notif-count');
+
+    // search
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const clearSearchBtn = document.getElementById('clear-search');
+
+    let currentUser = null;
+    let myIncomingRequestsUnsub = null;
+    let myFriendsUnsub = null;
+    let notificationsUnsub = null;
+
+    // 안전한 초기화: DOMContentLoaded로 감싼 후 이벤트 바인딩
+    document.addEventListener('DOMContentLoaded', () => {
+      // 탭 바인딩 (방어적 코딩)
+      tabs.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const tab = btn.dataset.tab;
+          showTab(tab);
+        });
+      });
+
+      btnLogin.addEventListener('click', handleLogin);
+      btnLogout.addEventListener('click', handleLogout);
+
+      editProfileBtn.addEventListener('click', () => {
+        if (!currentUser) {
+          alert('프로필을 편집하려면 로그인하세요.');
+          return;
+        }
+        profileEdit.classList.toggle('hidden');
+      });
+      cancelProfileBtn.addEventListener('click', () => profileEdit.classList.add('hidden'));
+      saveProfileBtn.addEventListener('click', saveProfile);
+
+      uploadPhotoBtn.addEventListener('click', uploadPhoto);
+      createPostBtn.addEventListener('click', createPost);
+      guestPostBtn.addEventListener('click', createGuest);
+
+      viewRequestsBtn.addEventListener('click', () => showTab('friends'));
+      viewNotifsBtn.addEventListener('click', () => displayNotificationsPanel());
+
+      searchBtn.addEventListener('click', () => performSearch(searchInput.value.trim()));
+      clearSearchBtn.addEventListener('click', () => { searchInput.value=''; loadAllLists(); });
+
+      // 실시간으로 공개된 컨텐츠를 표시 (비회원도 볼 수 있도록 공개 필터 적용)
+      subscribeToPublicContent();
+    });
+
+    // 탭 보이기
+    function showTab(name) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      tabSections.forEach(s => s.classList.toggle('hidden', s.id !== name));
+    }
+
+    // Auth
+    async function handleLogin() {
+      const provider = new GoogleAuthProvider();
+      try {
+        const res = await signInWithPopup(auth, provider);
+        // 로그인 후 자동으로 사용자 document 생성/업데이트
+        const u = res.user;
+        await setDoc(doc(db, 'users', u.uid), {
+          displayName: u.displayName || '',
+          photoURL: u.photoURL || '',
+          bio: '',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.error('로그인 실패', err);
+        alert('로그인 실패: ' + err.message);
+      }
+    }
+
+    async function handleLogout() {
+      await signOut(auth);
+      alert('로그아웃 되었습니다.');
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      // cleanup previous listeners
+      if (myIncomingRequestsUnsub) { myIncomingRequestsUnsub(); myIncomingRequestsUnsub = null; }
+      if (myFriendsUnsub) { myFriendsUnsub(); myFriendsUnsub = null; }
+      if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
+
+      if (user) {
+        userArea.textContent = user.displayName || user.email || user.uid;
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = 'inline-block';
+        // load profile
+        const uDoc = await getDoc(doc(db, 'users', user.uid));
+        if (uDoc.exists()) {
+          const d = uDoc.data();
+          displayNameElem.textContent = d.displayName || user.displayName || '사용자';
+          displayBioElem.textContent = d.bio || '자기소개가 없습니다.';
+          profilePic.src = d.photoURL || user.photoURL || '';
+          inputName.value = d.displayName || user.displayName || '';
+          inputBio.value = d.bio || '';
+        } else {
+          // 기본 프로필 만들기
+          await setDoc(doc(db, 'users', user.uid), {
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            bio: '',
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          displayNameElem.textContent = user.displayName || '사용자';
+          profilePic.src = user.photoURL || '';
+        }
+
+        // incoming friend requests listener
+        const incomingQ = query(collection(db, 'friendRequests'), where('to', '==', user.uid), orderBy('createdAt', 'desc'));
+        myIncomingRequestsUnsub = onSnapshot(incomingQ, snap => {
+          const arr = []; snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+          renderIncomingRequests(arr);
+        });
+
+        // friends list listener (subcollection)
+        const friendsQ = query(collection(db, 'users', user.uid, 'friends'), orderBy('createdAt', 'desc'));
+        myFriendsUnsub = onSnapshot(friendsQ, snap => {
+          const arr = []; snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+          renderFriends(arr);
+        });
+
+        // notifications listener (unread count)
+        const notifsQ = query(collection(db, 'notifications'), where('to', '==', user.uid), orderBy('createdAt', 'desc'));
+        notificationsUnsub = onSnapshot(notifsQ, snap => {
+          const arr = []; snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+          renderNotifications(arr);
+        });
+
+      } else {
+        userArea.textContent = '비로그인 사용자';
+        btnLogin.style.display = 'inline-block';
+        btnLogout.style.display = 'none';
+        displayNameElem.textContent = '비로그인 사용자';
+        displayBioElem.textContent = '자기소개가 없습니다.';
+        profilePic.src = '';
+      }
+      // 로그인 상태 바뀌면 리스트 리로드
+      loadAllLists();
+    });
+
+    // 프로필 저장 (사진 업로드 포함)
+    async function saveProfile() {
+      if (!currentUser) { alert('로그인 후 저장하세요.'); return; }
+      const name = inputName.value.trim();
+      const bio = inputBio.value.trim();
+      let photoURL = null;
+      if (profilePhotoInput.files && profilePhotoInput.files[0]) {
+        const file = profilePhotoInput.files[0];
+        const pRef = storageRef(storage, `profiles/${currentUser.uid}/${Date.now()}_${file.name}`);
+        const meta = { customMetadata: { public: 'true' } };
+        await uploadBytes(pRef, file, meta);
+        photoURL = await getDownloadURL(pRef);
+      }
+
+      const updateData = { updatedAt: serverTimestamp() };
+      if (name) updateData.displayName = name;
+      if (bio) updateData.bio = bio;
+      if (photoURL) updateData.photoURL = photoURL;
+
+      await updateDoc(doc(db, 'users', currentUser.uid), updateData);
+      profileEdit.classList.add('hidden');
+      alert('프로필이 저장되었습니다.');
+    }
+
+    // 사진 업로드
+    async function uploadPhoto() {
+      if (!currentUser) { alert('사진 업로드는 로그인 필요'); return; }
+      const file = photoFileInput.files && photoFileInput.files[0];
+      const title = photoTitleInput.value.trim() || '무제';
+      const isPublic = !!photoPublicCheckbox.checked;
+      if (!file) { alert('업로드할 사진을 선택하세요.'); return; }
+
+      try {
+        const path = `photos/${currentUser.uid}/${Date.now()}_${file.name}`;
+        const sRef = storageRef(storage, path);
+        const meta = { customMetadata: { public: String(isPublic) } };
+        await uploadBytes(sRef, file, meta);
+        const url = await getDownloadURL(sRef);
+
+        await addDoc(collection(db, 'photos'), {
+          userId: currentUser.uid,
+          title,
+          url,
+          public: isPublic,
+          createdAt: serverTimestamp(),
+          likes: [],
+          dislikes: [],
+          shared: isPublic
+        });
+        photoTitleInput.value = '';
+        photoFileInput.value = '';
+        photoPublicCheckbox.checked = false;
+        alert('사진 업로드 완료');
+      } catch (err) {
+        console.error('사진 업로드 오류', err);
+        alert('업로드 실패: ' + err.message);
+      }
+    }
+
+    // 다이어리 작성
+    async function createPost() {
+      if (!currentUser) { alert('다이어리 작성은 로그인 필요'); return; }
+      const title = postTitle.value.trim();
+      const content = postContent.value.trim();
+      const isPublic = !!postPublicCheckbox.checked;
+      if (!content) { alert('내용을 입력하세요.'); return; }
+      await addDoc(collection(db, 'posts'), {
+        userId: currentUser.uid,
+        title,
+        content,
+        public: isPublic,
+        createdAt: serverTimestamp(),
+        likes: [],
+        dislikes: [],
+        shared: isPublic
+      });
+      postTitle.value = '';
+      postContent.value = '';
+      postPublicCheckbox.checked = false;
+      alert('글이 등록되었습니다.');
+    }
+
+    // 방명록
+    async function createGuest() {
+      if (!currentUser) { alert('방명록은 로그인 필요'); return; }
+      const content = guestContent.value.trim();
+      if (!content) { alert('메시지를 입력하세요.'); return; }
+      await addDoc(collection(db, 'guestbook'), {
+        userId: currentUser.uid,
+        content,
+        createdAt: serverTimestamp()
+      });
+      guestContent.value = '';
+      alert('방명록이 등록되었습니다.');
+    }
+
+    // 구독/실시간 로드 (public 또는 로그인한 사용자의 모든 항목)
+    function subscribeToPublicContent() {
+      // photos: 실시간으로 모든 photo 문서 감시; 클라이언트에서 공개필터 적용
+      const photosQ = query(collection(db, 'photos'), orderBy('createdAt', 'desc'));
+      onSnapshot(photosQ, snap => {
+        const items = [];
+        snap.forEach(docSnap => items.push({ id: docSnap.id, ...docSnap.data() }));
+        renderPhotos(items);
+      });
+
+      const postsQ = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+      onSnapshot(postsQ, snap => {
+        const items = [];
+        snap.forEach(docSnap => items.push({ id: docSnap.id, ...docSnap.data() }));
+        renderPosts(items);
+      });
+
+      const guestQ = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'));
+      onSnapshot(guestQ, snap => {
+        const items = [];
+        snap.forEach(docSnap => items.push({ id: docSnap.id, ...docSnap.data() }));
+        renderGuests(items);
+      });
+    }
+
+    // 렌더링 함수들 (클라이언트 필터 포함)
+    function renderPhotos(items) {
+      photosList.innerHTML = '';
+      const isAuthed = !!currentUser;
+      // 공개 필터: 비로그인 사용자에게는 public:true만 보여줌
+      const filtered = items.filter(it => isAuthed ? true : !!it.public);
+      filtered.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <div style="display:flex;gap:12px;align-items:center">
+            <img src="${it.url}" style="width:120px;height:80px;object-fit:cover;border-radius:6px" />
+            <div style="flex:1">
+              <div style="font-weight:700">${escapeHtml(it.title||'무제')}</div>
+              <div class="meta">작성자: ${escapeHtml(it.userId)} · ${it.createdAt ? new Date(it.createdAt.seconds*1000).toLocaleString() : ''}</div>
+              <div class="actions">
+                <button class="btn like-btn">좋아요 (${Array.isArray(it.likes)?it.likes.length:0})</button>
+                <button class="btn dislike-btn">싫어요 (${Array.isArray(it.dislikes)?it.dislikes.length:0})</button>
+                <button class="btn friend-btn">친구추가</button>
+                <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="share-checkbox" ${it.shared ? 'checked' : ''}/> 공유</label>
+              </div>
+            </div>
+          </div>
+        `;
+        const likeBtn = el.querySelector('.like-btn');
+        const dislikeBtn = el.querySelector('.dislike-btn');
+        const friendBtn = el.querySelector('.friend-btn');
+        const shareCheckbox = el.querySelector('.share-checkbox');
+
+        likeBtn.addEventListener('click', async () => {
+          await toggleLike('photos', it.id, true);
+          // 알림 생성: 사진 작성자에게 알림
+          createNotification(it.userId, 'like', { collection: 'photos', id: it.id, from: currentUser ? currentUser.uid : null });
+        });
+        dislikeBtn.addEventListener('click', async () => {
+          await toggleLike('photos', it.id, false);
+          createNotification(it.userId, 'dislike', { collection: 'photos', id: it.id, from: currentUser ? currentUser.uid : null });
+        });
+        friendBtn.addEventListener('click', async () => {
+          await sendFriendRequest(it.userId);
+        });
+        shareCheckbox.addEventListener('change', async (e) => toggleShare('photos', it.id, e.target.checked));
+
+        photosList.appendChild(el);
+      });
+    }
+
+    function renderPosts(items) {
+      postsList.innerHTML = '';
+      const isAuthed = !!currentUser;
+      const filtered = items.filter(it => isAuthed ? true : !!it.public);
+      filtered.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <div>
+            <div style="font-weight:700">${escapeHtml(it.title||'무제')}</div>
+            <div class="meta">${it.createdAt ? new Date(it.createdAt.seconds*1000).toLocaleString() : ''} · 작성자: ${escapeHtml(it.userId)}</div>
+            <div style="margin-top:8px">${escapeHtml(it.content || '')}</div>
+            <div class="actions">
+              <button class="btn like-btn">좋아요 (${Array.isArray(it.likes)?it.likes.length:0})</button>
+              <button class="btn dislike-btn">싫어요 (${Array.isArray(it.dislikes)?it.dislikes.length:0})</button>
+              <button class="btn friend-btn">친구추가</button>
+              <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="share-checkbox" ${it.shared ? 'checked' : ''}/> 공유</label>
+            </div>
+          </div>
+        `;
+        const likeBtn = el.querySelector('.like-btn');
+        const dislikeBtn = el.querySelector('.dislike-btn');
+        const friendBtn = el.querySelector('.friend-btn');
+        const shareCheckbox = el.querySelector('.share-checkbox');
+
+        likeBtn.addEventListener('click', async () => {
+          await toggleLike('posts', it.id, true);
+          createNotification(it.userId, 'like', { collection: 'posts', id: it.id, from: currentUser ? currentUser.uid : null });
+        });
+        dislikeBtn.addEventListener('click', async () => {
+          await toggleLike('posts', it.id, false);
+          createNotification(it.userId, 'dislike', { collection: 'posts', id: it.id, from: currentUser ? currentUser.uid : null });
+        });
+        friendBtn.addEventListener('click', async () => {
+          await sendFriendRequest(it.userId);
+        });
+        shareCheckbox.addEventListener('change', (e) => toggleShare('posts', it.id, e.target.checked));
+
+        postsList.appendChild(el);
+      });
+    }
+
+    function renderGuests(items) {
+      guestList.innerHTML = '';
+      items.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <div>
+            <div class="meta">${it.createdAt ? new Date(it.createdAt.seconds*1000).toLocaleString() : ''} · 작성자: ${escapeHtml(it.userId)}</div>
+            <div style="margin-top:8px">${escapeHtml(it.content || '')}</div>
+          </div>
+        `;
+        guestList.appendChild(el);
+      });
+    }
+
+    // 좋아요/싫어요 토글
+    async function toggleLike(collectionName, docId, isLike) {
+      if (!currentUser) { alert('좋아요/싫어요는 로그인한 사용자만 가능합니다.'); return; }
+      const docRef = doc(db, collectionName, docId);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return;
+      const d = snap.data();
+      const uid = currentUser.uid;
+
+      if (isLike) {
+        if (Array.isArray(d.likes) && d.likes.includes(uid)) {
+          await updateDoc(docRef, { likes: arrayRemove(uid) });
+        } else {
+          await updateDoc(docRef, { likes: arrayUnion(uid), dislikes: arrayRemove(uid) });
+        }
+      } else {
+        if (Array.isArray(d.dislikes) && d.dislikes.includes(uid)) {
+          await updateDoc(docRef, { dislikes: arrayRemove(uid) });
+        } else {
+          await updateDoc(docRef, { dislikes: arrayUnion(uid), likes: arrayRemove(uid) });
+        }
+      }
+    }
+
+    // 친구 요청 (간단 구현)
+    async function sendFriendRequest(targetUserId) {
+      if (!currentUser) { alert('친구 요청은 로그인 후 가능합니다.'); return; }
+      if (targetUserId === currentUser.uid) { alert('자기 자신에게는 요청할 수 없습니다.'); return; }
+      await addDoc(collection(db, 'friendRequests'), {
+        from: currentUser.uid,
+        to: targetUserId,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      // 알림 생성: 상대방에게 친구 요청 알림
+      createNotification(targetUserId, 'friend_request', { from: currentUser.uid });
+      alert('친구 요청을 보냈습니다.');
+    }
+
+    // 수락/거부
+    async function acceptFriendRequest(requestId) {
+      if (!currentUser) return;
+      const reqRef = doc(db, 'friendRequests', requestId);
+      const snap = await getDoc(reqRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.to !== currentUser.uid) { alert('권한이 없습니다.'); return; }
+      // create friends entries for both users (simple)
+      await setDoc(doc(db, 'users', currentUser.uid, 'friends', data.from), { uid: data.from, createdAt: serverTimestamp() });
+      await setDoc(doc(db, 'users', data.from, 'friends', currentUser.uid), { uid: currentUser.uid, createdAt: serverTimestamp() });
+      // update request
+      await updateDoc(reqRef, { status: 'accepted', handledAt: serverTimestamp() });
+      createNotification(data.from, 'friend_accept', { by: currentUser.uid });
+      alert('친구가 되었습니다.');
+    }
+
+    async function declineFriendRequest(requestId) {
+      if (!currentUser) return;
+      const reqRef = doc(db, 'friendRequests', requestId);
+      const snap = await getDoc(reqRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.to !== currentUser.uid) { alert('권한이 없습니다.'); return; }
+      await updateDoc(reqRef, { status: 'declined', handledAt: serverTimestamp() });
+      createNotification(data.from, 'friend_decline', { by: currentUser.uid });
+      alert('거절 처리되었습니다.');
+    }
+
+    // 알림 생성
+    async function createNotification(toUid, type, payload) {
+      if (!toUid) return;
+      await addDoc(collection(db, 'notifications'), {
+        to: toUid,
+        type,
+        payload: payload || {},
+        read: false,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    // 수신 알림 렌더
+    function renderNotifications(items) {
+      // show count of unread
+      const unread = items.filter(i => !i.read).length;
+      notifCount.textContent = unread;
+      // store for panel view
+      window._myNotifications = items;
+    }
+
+    function displayNotificationsPanel() {
+      const items = window._myNotifications || [];
+      if (!items.length) { alert('알림이 없습니다.'); return; }
+      const html = items.map(i => `${new Date(i.createdAt.seconds*1000).toLocaleString()} - ${escapeHtml(i.type)} - ${escapeHtml(JSON.stringify(i.payload))}`).join('\\n');
+      alert(html);
+    }
+
+    // 친구 렌더링
+    function renderFriends(items) {
+      friendsList.innerHTML = '';
+      items.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `<div>${escapeHtml(it.uid || it.id)}</div>`;
+        friendsList.appendChild(el);
+      });
+    }
+
+    // 들어온 요청 렌더
+    function renderIncomingRequests(items) {
+      incomingRequests.innerHTML = '';
+      items.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <div>
+            <div><strong>요청자:</strong> ${escapeHtml(it.from)}</div>
+            <div class="small">${it.createdAt ? new Date(it.createdAt.seconds*1000).toLocaleString() : ''}</div>
+            <div style="margin-top:8px">
+              <button class="btn btn-primary accept-btn">수락</button>
+              <button class="btn decline-btn">거절</button>
+            </div>
+          </div>
+        `;
+        el.querySelector('.accept-btn').addEventListener('click', () => acceptFriendRequest(it.id));
+        el.querySelector('.decline-btn').addEventListener('click', () => declineFriendRequest(it.id));
+        incomingRequests.appendChild(el);
+      });
+    }
+
+    // 공유 설정 토글 (shared 필드)
+    async function toggleShare(collectionName, docId, shared) {
+      if (!currentUser) { alert('공유 설정은 로그인 사용자만 가능합니다.'); return; }
+      const ref = doc(db, collectionName, docId);
+      const dSnap = await getDoc(ref);
+      if (!dSnap.exists()) return;
+      const data = dSnap.data();
+      if (data.userId !== currentUser.uid) { alert('본인 게시물만 공유 설정을 변경할 수 있습니다.'); return; }
+      await updateDoc(ref, { shared });
+      alert('공유 설정이 저장되었습니다.');
+    }
+
+    // 검색: 단순 클라이언트 필터 (제목/내용 포함)
+    async function performSearch(keyword) {
+      const kw = (keyword || '').toLowerCase();
+      if (!kw) { loadAllLists(); return; }
+
+      const photosSnap = await getDocs(collection(db, 'photos'));
+      const allPhotos = [];
+      photosSnap.forEach(s => allPhotos.push({ id: s.id, ...s.data() }));
+
+      const postsSnap = await getDocs(collection(db, 'posts'));
+      const allPosts = [];
+      postsSnap.forEach(s => allPosts.push({ id: s.id, ...s.data() }));
+
+      const filteredPhotos = allPhotos.filter(p => (p.title || '').toLowerCase().includes(kw) || (p.userId||'').toLowerCase().includes(kw));
+      const filteredPosts = allPosts.filter(p => (p.title||'').toLowerCase().includes(kw) || (p.content||'').toLowerCase().includes(kw));
+
+      renderPhotos(filteredPhotos);
+      renderPosts(filteredPosts);
+      guestList.innerHTML = '<div class="small">방명록은 검색 대상이 아님</div>';
+    }
+
+    async function loadAllLists() {
+      // no-op; real-time listeners update lists
+    }
+
+    // 도메인/보안 및 firestore rules 주의 메시지는 별도
+    // HTML 이스케이프(간단)
+    function escapeHtml(str = '') {
+      return String(str).replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
+    }
+
+    // 초기 탭 강제: photos
+    showTab('photos');
+
+  </script>
+</body>
+</html>
