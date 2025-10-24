@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1-3반 미니홈피</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* 연한 회색 배경 */
+        }
+        .minihompy-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #f9fafb; /* 사이드바 배경 */
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+        .profile-box {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .profile-pic {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            object-fit: cover;
+            border: 3px solid #e5e7eb;
+        }
+        .menu-item {
+            display: block;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .menu-item:hover, .menu-item.active {
+            background-color: #e5e7eb; /* 메뉴 호버/활성 */
+            color: #111827;
+        }
+        .content-section {
+            display: none; /* 기본적으로 모든 섹션 숨김 */
+            animation: fadeIn 0.5s;
+        }
+        .content-section.active {
+            display: block; /* 활성 섹션만 표시 */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin-top: 6px;
+        }
+        .btn {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: none;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* 파란색 버튼 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        /* 로딩 스피너 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- 로딩 뷰 -->
+    <div id="loading-view" class="modal hidden">
+        <div class="loader"></div>
+    </div>
+
+    <!-- 오류 메시지 뷰 -->
+    <div id="error-view" class="modal hidden">
+        <div class="modal-content text-center">
+            <h3 class="text-xl font-bold text-red-600 mb-4">오류 발생</h3>
+            <p id="error-message" class="mb-6"></p>
+            <button id="close-error-btn" class="btn btn-primary">확인</button>
+        </div>
+    </div>
+
+    <!-- 인증 코드 입력 뷰 -->
+    <div id="auth-code-view" class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold text-center mb-6">1-3반 미니홈피</h2>
+        <p class="text-center text-gray-600 mb-6">관리자에게 받은 인증 코드를 입력하세요.</p>
+        <div>
+            <label for="auth-code-input" class="block text-sm font-medium text-gray-700">일회용 인증 코드</label>
+            <input type="text" id="auth-code-input" class="form-input" placeholder="예: CLASS1-3ABC">
+        </div>
+        <button id="auth-code-submit-btn" class="btn btn-primary w-full mt-6">인증하기</button>
+        <p class="text-center text-gray-500 text-sm mt-4">이미 계정이 있으신가요? <span id="show-login-link" class="text-blue-600 cursor-pointer hover:underline">로그인</span></p>
+    </div>
+
+    <!-- 회원가입 뷰 -->
+    <div id="signup-view" class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg hidden">
+        <h2 class="text-2xl font-bold text-center mb-6">회원가입</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">이메일 (로그인 ID)</label>
+                <input type="email" id="signup-email" class="form-input" placeholder="your@email.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">비밀번호 (6자리 이상)</label>
+                <input type="password" id="signup-password" class="form-input" placeholder="••••••••">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">이름 (실명)</label>
+                <input type="text" id="signup-name" class="form-input" placeholder="홍길동">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">별명 (2~10자, 한/영/숫자)</label>
+                <input type="text" id="signup-nickname" class="form-input" placeholder="멋진 길동이">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">프로필 사진</label>
+                <input type="file" id="signup-profile-pic" class="form-input" accept="image/png, image/jpeg">
+            </div>
+        </div>
+        <button id="signup-submit-btn" class="btn btn-primary w-full mt-6">가입하기</button>
+        <p class="text-center text-gray-500 text-sm mt-4"><span id="show-login-link-2" class="text-blue-600 cursor-pointer hover:underline">로그인으로 돌아가기</span></p>
+    </div>
+
+    <!-- 로그인 뷰 -->
+    <div id="login-view" class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg hidden">
+        <h2 class="text-2xl font-bold text-center mb-6">로그인</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">이메일</label>
+                <input type="email" id="login-email" class="form-input" placeholder="your@email.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">비밀번호</label>
+                <input type="password" id="login-password" class="form-input" placeholder="••••••••">
+            </div>
+        </div>
+        <button id="login-submit-btn" class="btn btn-primary w-full mt-6">로그인</button>
+        <p class="text-center text-gray-500 text-sm mt-4">계정이 없으신가요? <span id="show-auth-code-link" class="text-blue-600 cursor-pointer hover:underline">인증 코드로 가입하기</span></p>
+    </div>
+
+    <!-- 미니홈피 메인 뷰 -->
+    <div id="minihompy-view" class="minihompy-container hidden">
+        <!-- 사이드바 -->
+        <aside class="sidebar">
+            <div class="profile-box mb-6">
+                <img id="profile-pic" src="https://placehold.co/120x120/e0e0e0/757575?text=Profile" alt="Profile Picture" class="profile-pic">
+                <h3 id="profile-nickname" class="text-lg font-semibold text-gray-800"></h3>
+                <p id="profile-bio" class="text-sm text-gray-500 mt-1"></p>
+                <button id="edit-profile-btn" class="btn btn-secondary w-full mt-4 text-sm">프로필 수정</button>
+            </div>
+            <nav class="space-y-2">
+                <a class="menu-item active" data-target="home">🏠 홈</a>
+                <a class="menu-item" data-target="posts">📖 다이어리</a>
+                <a class="menu-item" data-target="guestbook">👥 방명록</a>
+                <!-- <a class="menu-item" data-target="friends">🧑‍🤝‍🧑 일촌</a> -->
+                <a id="logout-btn" class="menu-item text-red-500 hover:bg-red-100">🚪 로그아웃</a>
+            </nav>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="main-content">
+            <!-- 홈 섹션 -->
+            <section id="content-home" class="content-section active">
+                <h2 class="text-2xl font-bold mb-4">내 미니홈피</h2>
+                <div class="card">
+                    <h3 class="font-semibold text-lg mb-2">프로필 정보</h3>
+                    <p><strong>이름:</strong> <span id="home-name"></span></p>
+                    <p><strong>별명:</strong> <span id="home-nickname"></span></p>
+                    <p><strong>이메일:</strong> <span id="home-email"></span></p>
+                    <p><strong>자기소개:</strong> <span id="home-bio"></span></p>
+                    <p><strong>관심사:</strong> <span id="home-interests"></span></p>
+                    <p><strong>공개범위:</strong> <span id="home-visibility"></span></p>
+                </div>
+            </section>
+
+            <!-- 다이어리(게시글) 섹션 -->
+            <section id="content-posts" class="content-section">
+                <h2 class="text-2xl font-bold mb-4">다이어리 📖</h2>
+                <div class="card mb-6">
+                    <h3 class="font-semibold text-lg mb-2">새 글 쓰기</h3>
+                    <textarea id="post-content-input" class="form-input" rows="3" placeholder="오늘의 기분은?"></textarea>
+                    <input type="file" id="post-image-input" class="form-input mt-2" accept="image/png, image/jpeg">
+                    <button id="create-post-btn" class="btn btn-primary mt-3">글쓰기</button>
+                </div>
+                <div id="posts-list" class="space-y-4">
+                    <!-- 게시글이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </section>
+
+            <!-- 방명록 섹션 -->
+            <section id="content-guestbook" class="content-section">
+                <h2 class="text-2xl font-bold mb-4">방명록 👥</h2>
+                <div class="card mb-6">
+                    <h3 class="font-semibold text-lg mb-2">방명록 남기기</h3>
+                    <textarea id="guestbook-content-input" class="form-input" rows="2" placeholder="안녕! 잘 보고 가~"></textarea>
+                    <button id="create-guestbook-btn" class="btn btn-primary mt-3">남기기</button>
+                </div>
+                <div id="guestbook-list" class="space-y-4">
+                    <!-- 방명록이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 프로필 수정 모달 -->
+    <div id="edit-profile-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">프로필 수정</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">별명 (2~10자, 한/영/숫자)</label>
+                    <input type="text" id="edit-nickname" class="form-input">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">자기소개</label>
+                    <textarea id="edit-bio" class="form-input" rows="3"></textarea>
+                </div>
+                 <div>
+                    <label class="block text-sm font-medium text-gray-700">관심사 (쉼표로 구분)</label>
+                    <input type="text" id="edit-interests" class="form-input" placeholder="예: 코딩, 음악, 농구">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">프로필 사진 변경</label>
+                    <input type="file" id="edit-profile-pic" class="form-input" accept="image/png, image/jpeg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">프로필 공개 범위</label>
+                    <select id="edit-visibility" class="form-input">
+                        <option value="public">전체 공개</option>
+                        <option value="friends">친구 공개</option>
+                        <option value="private">비공개</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button id="cancel-edit-profile-btn" class="btn btn-secondary">취소</button>
+                <button id="save-edit-profile-btn" class="btn btn-primary">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Firebase SDK 임포트 (v11.6.1 기준)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc,
+            addDoc,
+            updateDoc,
+            collection,
+            query,
+            where,
+            onSnapshot,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getStorage, 
+            ref, 
+            uploadBytes, 
+            getDownloadURL 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // 사용자가 제공한 Firebase 구성
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlR_ctIhpsykWYJi_W6iYIeM3lUpFe5Pk",
+            authDomain: "pr-2128d.firebaseapp.com",
+            projectId: "pr-2128d",
+            storageBucket: "pr-2128d.firebasestorage.app",
+            messagingSenderId: "915082414403",
+            appId: "1:915082414403:web:1dbb554c05288b09a387f6"
+        };
+
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // 전역 변수
+        let currentUser = null;
+        let validInvitationCode = null; // 회원가입 시 사용할 유효한 코드
+        let userProfile = null; // 현재 로그인된 사용자 프로필
+
+        // UI 요소 가져오기
+        const loadingView = document.getElementById('loading-view');
+        const errorView = document.getElementById('error-view');
+        const errorMessage = document.getElementById('error-message');
+        const closeErrorBtn = document.getElementById('close-error-btn');
+
+        const authCodeView = document.getElementById('auth-code-view');
+        const signupView = document.getElementById('signup-view');
+        const loginView = document.getElementById('login-view');
+        const minihompyView = document.getElementById('minihompy-view');
+
+        // 뷰 전환 함수
+        function showView(viewToShow) {
+            [authCodeView, signupView, loginView, minihompyView].forEach(view => {
+                view.classList.add('hidden');
+            });
+            if (viewToShow) {
+                viewToShow.classList.remove('hidden');
+            }
+        }
+
+        // 로딩 및 오류 처리
+        function showLoading(show) {
+            loadingView.classList.toggle('hidden', !show);
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorView.classList.remove('hidden');
+        }
+
+        closeErrorBtn.addEventListener('click', () => {
+            errorView.classList.add('hidden');
+        });
+
+        // 1. 인증 상태 리스너
+        onAuthStateChanged(auth, async (user) => {
+            showLoading(true);
+            if (user) {
+                currentUser = user;
+                await fetchAndRenderUserProfile(user.uid);
+                showView(minihompyView);
+            } else {
+                currentUser = null;
+                userProfile = null;
+                showView(authCodeView); // 로그아웃 시 인증 코드 뷰로
+            }
+            showLoading(false);
+        });
+
+        // 사용자 프로필 가져오기 및 렌더링
+        async function fetchAndRenderUserProfile(uid) {
+            try {
+                const userDocRef = doc(db, "users", uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (userDoc.exists()) {
+                    userProfile = { id: userDoc.id, ...userDoc.data() };
+                    renderProfileData(userProfile);
+                    // 홈피 주인이 현재 유저이므로, 이 유저의 게시글과 방명록을 로드
+                    loadPosts(uid);
+                    loadGuestbook(uid);
+                } else {
+                    showError("사용자 프로필을 찾을 수 없습니다. 강제 로그아웃됩니다.");
+                    await signOut(auth);
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+                showError(`프로필 로딩 오류: ${error.message}`);
+                await signOut(auth);
+            }
+        }
+
+        // 프로필 데이터를 UI에 바인딩
+        function renderProfileData(profile) {
+            // 사이드바
+            document.getElementById('profile-pic').src = profile.profilePicUrl || 'https://placehold.co/120x120/e0e0e0/757575?text=Profile';
+            document.getElementById('profile-nickname').textContent = profile.nickname;
+            document.getElementById('profile-bio').textContent = profile.bio || "자기소개가 없습니다.";
+
+            // 홈 탭
+            document.getElementById('home-name').textContent = profile.name;
+            document.getElementById('home-nickname').textContent = profile.nickname;
+            document.getElementById('home-email').textContent = profile.email;
+            document.getElementById('home-bio').textContent = profile.bio || "-";
+            document.getElementById('home-interests').textContent = profile.interests ? profile.interests.join(', ') : "-";
+            document.getElementById('home-visibility').textContent = profile.visibility || "전체 공개";
+        }
+
+        // 2. 뷰 전환 링크
+        document.getElementById('show-login-link').addEventListener('click', () => showView(loginView));
+        document.getElementById('show-login-link-2').addEventListener('click', () => showView(loginView));
+        document.getElementById('show-auth-code-link').addEventListener('click', () => showView(authCodeView));
+
+        // 3. 인증 코드 확인
+        document.getElementById('auth-code-submit-btn').addEventListener('click', async () => {
+            const code = document.getElementById('auth-code-input').value.trim();
+            if (!code) {
+                showError("인증 코드를 입력하세요.");
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const codeDocRef = doc(db, "invitationCodes", code);
+                const codeDoc = await getDoc(codeDocRef);
+
+                if (!codeDoc.exists()) {
+                    showError("유효하지 않은 인증 코드입니다.");
+                } else if (codeDoc.data().used) {
+                    showError("이미 사용된 인증 코드입니다.");
+                } else if (codeDoc.data().class === "1-3") {
+                    validInvitationCode = code; // 코드 저장
+                    showView(signupView); // 회원가입 뷰로
+                } else {
+                    showError("이 코드는 1-3반 코드가 아닙니다.");
+                }
+            } catch (error) {
+                console.error("Error checking auth code:", error);
+                showError(`인증 오류: ${error.message}`);
+            }
+            showLoading(false);
+        });
+
+        // 4. 회원가입 처리
+        const nicknameRegex = /^[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣]{2,10}$/;
+        document.getElementById('signup-submit-btn').addEventListener('click', async () => {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const name = document.getElementById('signup-name').value;
+            const nickname = document.getElementById('signup-nickname').value;
+            const file = document.getElementById('signup-profile-pic').files[0];
+
+            // 1. 유효성 검사
+            if (!validInvitationCode) {
+                showError("인증 코드가 확인되지 않았습니다. 처음부터 다시 시도하세요.");
+                showView(authCodeView);
+                return;
+            }
+            if (!email || !password || !name || !nickname || !file) {
+                showError("모든 항목을 입력하고 프로필 사진을 선택해야 합니다.");
+                return;
+            }
+            if (password.length < 6) {
+                showError("비밀번호는 6자리 이상이어야 합니다.");
+                return;
+            }
+            if (!nicknameRegex.test(nickname)) {
+                showError("별명은 2~10자의 한글, 영문, 숫자만 사용 가능합니다.");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB 용량 제한
+                showError("프로필 사진은 5MB를 초과할 수 없습니다.");
+                return;
+            }
+            
+            showLoading(true);
+
+            try {
+                // 2. 닉네임 중복 검사
+                const nicknameQuery = query(collection(db, "users"), where("nickname", "==", nickname));
+                const nicknameSnapshot = await getDocs(nicknameQuery);
+                if (!nicknameSnapshot.empty) {
+                    showError("이미 사용 중인 별명입니다.");
+                    showLoading(false);
+                    return;
+                }
+
+                // 3. Firebase Auth 회원 생성
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 4. 프로필 사진 업로드
+                const storageRef = ref(storage, `profilePics/${user.uid}/${file.name}`);
+                await uploadBytes(storageRef, file);
+                const profilePicUrl = await getDownloadURL(storageRef);
+
+                // 5. Firestore에 사용자 프로필 저장
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    email: email,
+                    name: name,
+                    nickname: nickname,
+                    profilePicUrl: profilePicUrl,
+                    bio: `안녕하세요! ${nickname}입니다.`,
+                    interests: [],
+                    visibility: "public",
+                    class: "1-3", // 반 정보 태그
+                    createdAt: serverTimestamp()
+                });
+
+                // 6. 초대 코드 사용 처리
+                await updateDoc(doc(db, "invitationCodes", validInvitationCode), {
+                    used: true,
+                    usedBy: user.uid,
+                    usedAt: serverTimestamp()
+                });
+
+                validInvitationCode = null; // 코드 초기화
+                // onAuthStateChanged가 자동으로 미니홈피 뷰로 이동시킴
+                
+            } catch (error) {
+                console.error("Error signing up:", error);
+                if (error.code === 'auth/email-already-in-use') {
+                    showError("이미 가입된 이메일입니다.");
+                } else {
+                    showError(`가입 실패: ${error.message}`);
+                }
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 5. 로그인 처리
+        document.getElementById('login-submit-btn').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                showError("이메일과 비밀번호를 입력하세요.");
+                return;
+            }
+
+            showLoading(true);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged가 자동으로 미니홈피 뷰로 이동시킴
+            } catch (error) {
+                console.error("Error logging in:", error);
+                showError("이메일 또는 비밀번호가 일치하지 않습니다.");
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 6. 로그아웃 처리
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            showLoading(true);
+            await signOut(auth);
+            // onAuthStateChanged가 자동으로 로그인 뷰로 이동시킴
+        });
+
+        // 7. 미니홈피 네비게이션
+        document.querySelectorAll('.menu-item[data-target]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const targetId = e.target.getAttribute('data-target');
+                
+                // 모든 섹션 비활성화
+                document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+                // 모든 메뉴 비활성화
+                document.querySelectorAll('.menu-item[data-target]').forEach(menu => menu.classList.remove('active'));
+
+                // 타겟 섹션 활성화
+                document.getElementById(`content-${targetId}`).classList.add('active');
+                // 타겟 메뉴 활성화
+                e.target.classList.add('active');
+            });
+        });
+
+        // 8. 프로필 수정
+        const editProfileModal = document.getElementById('edit-profile-modal');
+        
+        document.getElementById('edit-profile-btn').addEventListener('click', () => {
+            // 현재 프로필 정보로 모달 채우기
+            document.getElementById('edit-nickname').value = userProfile.nickname;
+            document.getElementById('edit-bio').value = userProfile.bio || "";
+            document.getElementById('edit-interests').value = userProfile.interests ? userProfile.interests.join(', ') : "";
+            document.getElementById('edit-visibility').value = userProfile.visibility || "public";
+            editProfileModal.classList.remove('hidden');
+        });
+
+        document.getElementById('cancel-edit-profile-btn').addEventListener('click', () => {
+            editProfileModal.classList.add('hidden');
+        });
+
+        document.getElementById('save-edit-profile-btn').addEventListener('click', async () => {
+            const newNickname = document.getElementById('edit-nickname').value;
+            const newBio = document.getElementById('edit-bio').value;
+            const newInterests = document.getElementById('edit-interests').value.split(',').map(s => s.trim()).filter(Boolean);
+            const newVisibility = document.getElementById('edit-visibility').value;
+            const newFile = document.getElementById('edit-profile-pic').files[0];
+
+            if (!newNickname || !nicknameRegex.test(newNickname)) {
+                showError("별명은 2~10자의 한글, 영문, 숫자만 사용 가능합니다.");
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                // 닉네임이 변경되었는지, 중복되는지 확인
+                if (newNickname !== userProfile.nickname) {
+                    const nicknameQuery = query(collection(db, "users"), where("nickname", "==", newNickname));
+                    const nicknameSnapshot = await getDocs(nicknameQuery);
+                    if (!nicknameSnapshot.empty) {
+                        showError("이미 사용 중인 별명입니다.");
+                        showLoading(false);
+                        return;
+                    }
+                }
+
+                const updateData = {
+                    nickname: newNickname,
+                    bio: newBio,
+                    interests: newInterests,
+                    visibility: newVisibility
+                };
+
+                // 새 프로필 사진이 있는 경우
+                if (newFile) {
+                    if (newFile.size > 5 * 1024 * 1024) { // 5MB
+                        showError("파일 크기는 5MB를 초과할 수 없습니다.");
+                        showLoading(false);
+                        return;
+                    }
+                    const storageRef = ref(storage, `profilePics/${currentUser.uid}/${newFile.name}`);
+                    await uploadBytes(storageRef, newFile);
+                    updateData.profilePicUrl = await getDownloadURL(storageRef);
+                }
+
+                // Firestore 업데이트
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userDocRef, updateData);
+
+                // 로컬 프로필 업데이트 및 UI 갱신
+                userProfile = { ...userProfile, ...updateData };
+                renderProfileData(userProfile);
+
+                editProfileModal.classList.add('hidden');
+
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                showError(`프로필 업데이트 실패: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 9. 다이어리 (게시글)
+        const postsList = document.getElementById('posts-list');
+        let postsUnsubscribe = null;
+
+        function loadPosts(uid) {
+            if (postsUnsubscribe) postsUnsubscribe(); // 이전 리스너 해제
+
+            const postsQuery = query(collection(db, "posts"), where("authorId", "==", uid));
+            
+            postsUnsubscribe = onSnapshot(postsQuery, (snapshot) => {
+                postsList.innerHTML = ''; // 목록 비우기
+                if (snapshot.empty) {
+                    postsList.innerHTML = '<p class="text-gray-500 text-center">작성된 글이 없습니다.</p>';
+                    return;
+                }
+                snapshot.docs
+                    .sort((a, b) => b.data().createdAt.seconds - a.data().createdAt.seconds) // JS에서 정렬
+                    .forEach(doc => {
+                        const post = doc.data();
+                        const postEl = document.createElement('div');
+                        postEl.className = 'card';
+                        postEl.innerHTML = `
+                            <div class="flex items-center mb-2">
+                                <img src="${userProfile.profilePicUrl}" alt="${userProfile.nickname}" class="w-10 h-10 rounded-full mr-3">
+                                <div>
+                                    <p class="font-semibold">${userProfile.nickname}</p>
+                                    <p class="text-sm text-gray-500">${new Date(post.createdAt?.toDate()).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-800 mb-3 whitespace-pre-wrap">${post.content}</p>
+                            ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post Image" class="rounded-lg max-w-full h-auto mt-2">` : ''}
+                        `;
+                        postsList.appendChild(postEl);
+                    });
+            }, (error) => {
+                console.error("Error loading posts:", error);
+                showError("게시글 로딩 중 오류가 발생했습니다.");
+            });
+        }
+
+        document.getElementById('create-post-btn').addEventListener('click', async () => {
+            const content = document.getElementById('post-content-input').value;
+            const file = document.getElementById('post-image-input').files[0];
+
+            if (!content) {
+                showError("내용을 입력하세요.");
+                return;
+            }
+
+            showLoading(true);
+            try {
+                let imageUrl = null;
+                if (file) {
+                    if (file.size > 10 * 1024 * 1024) { // 10MB
+                        showError("이미지 크기는 10MB를 초과할 수 없습니다.");
+                        showLoading(false);
+                        return;
+                    }
+                    const storageRef = ref(storage, `postImages/${currentUser.uid}/${Date.now()}_${file.name}`);
+                    await uploadBytes(storageRef, file);
+                    imageUrl = await getDownloadURL(storageRef);
+                }
+
+                await addDoc(collection(db, "posts"), {
+                    authorId: currentUser.uid,
+                    authorNickname: userProfile.nickname,
+                    content: content,
+                    imageUrl: imageUrl,
+                    class: "1-3",
+                    createdAt: serverTimestamp()
+                });
+
+                document.getElementById('post-content-input').value = '';
+                document.getElementById('post-image-input').value = '';
+
+            } catch (error) {
+                console.error("Error creating post:", error);
+                showError(`글쓰기 실패: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 10. 방명록
+        const guestbookList = document.getElementById('guestbook-list');
+        let guestbookUnsubscribe = null;
+        let guestbookAuthorsCache = {}; // 방명록 작성자 프로필 캐시
+
+        async function getGuestbookAuthor(uid) {
+            if (guestbookAuthorsCache[uid]) {
+                return guestbookAuthorsCache[uid];
+            }
+            try {
+                const userDoc = await getDoc(doc(db, "users", uid));
+                if (userDoc.exists()) {
+                    const authorData = userDoc.data();
+                    guestbookAuthorsCache[uid] = {
+                        nickname: authorData.nickname,
+                        profilePicUrl: authorData.profilePicUrl
+                    };
+                    return guestbookAuthorsCache[uid];
+                }
+            } catch (error) {
+                console.error("Error fetching guestbook author:", error);
+            }
+            return { nickname: "알수없음", profilePicUrl: "https://placehold.co/40x40/e0e0e0/757575?text=?" };
+        }
+
+        function loadGuestbook(ownerUid) {
+            if (guestbookUnsubscribe) guestbookUnsubscribe();
+
+            const guestbookQuery = query(collection(db, "guestbook"), where("ownerId", "==", ownerUid));
+
+            guestbookUnsubscribe = onSnapshot(guestbookQuery, async (snapshot) => {
+                guestbookList.innerHTML = '';
+                if (snapshot.empty) {
+                    guestbookList.innerHTML = '<p class="text-gray-500 text-center">방명록이 비어있습니다.</p>';
+                    return;
+                }
+
+                // onSnapshot 콜백 내에서 비동기 처리를 위해 Promise.all 사용
+                const sortedDocs = snapshot.docs.sort((a, b) => b.data().createdAt.seconds - a.data().createdAt.seconds);
+                
+                for (const doc of sortedDocs) {
+                    const entry = doc.data();
+                    const author = await getGuestbookAuthor(entry.authorId);
+                    
+                    const entryEl = document.createElement('div');
+                    entryEl.className = 'card flex';
+                    entryEl.innerHTML = `
+                        <img src="${author.profilePicUrl}" alt="${author.nickname}" class="w-10 h-10 rounded-full mr-3 flex-shrink-0">
+                        <div>
+                            <p class="font-semibold">${author.nickname} <span class="text-sm text-gray-500 font-normal">${new Date(entry.createdAt?.toDate()).toLocaleString()}</span></p>
+                            <p class="text-gray-800 whitespace-pre-wrap">${entry.content}</p>
+                        </div>
+                    `;
+                    guestbookList.appendChild(entryEl);
+                }
+            }, (error) => {
+                console.error("Error loading guestbook:", error);
+                showError("방명록 로딩 중 오류가 발생했습니다.");
+            });
+        }
+
+        document.getElementById('create-guestbook-btn').addEventListener('click', async () => {
+            const content = document.getElementById('guestbook-content-input').value;
+            if (!content) {
+                showError("내용을 입력하세요.");
+                return;
+            }
+
+            showLoading(true);
+            try {
+                await addDoc(collection(db, "guestbook"), {
+                    ownerId: currentUser.uid, // 홈피 주인 ID
+                    authorId: currentUser.uid, // 작성자 ID (실제로는 방문자 ID여야 함. 이 데모에서는 편의상 자기 자신)
+                    // 이 데모는 자신의 홈피만 보므로, 실제로는 타인의 홈피 ID (ownerId)가 필요합니다.
+                    // 이 코드에서는 '내 방명록에 내가 쓰기'로 동작합니다.
+                    content: content,
+                    createdAt: serverTimestamp()
+                });
+                document.getElementById('guestbook-content-input').value = '';
+            } catch (error) {
+                console.error("Error writing guestbook:", error);
+                showError(`방명록 작성 실패: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+    </script>
+</body>
+</html>
